@@ -8,6 +8,7 @@
     <!-- Converters -->
     <converters:BoolToTextConverter x:Key="BoolToTextConverter" />
     <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+    <converters:ProduceDefinitionIdToNameConverter x:Key="ProduceDefinitionIdToNameConverter" />
 
     <Style TargetType="ActivityIndicator">
         <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />

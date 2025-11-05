@@ -1,12 +1,72 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:FarmGame.ViewModels"
+             xmlns:models="clr-namespace:FarmGame.Models"
              x:Class="FarmGame.Views.FactoryPage"
-             Title="Factory">
-	<VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center">
-		<Label
-            Text="Factory Page"
-            FontSize="30"
-            FontAttributes="Bold" />
-	</VerticalStackLayout>
+             Title="Factory"
+             x:DataType="viewmodels:FactoryViewModel">
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="20">
+
+            <!-- Player Money Display (for context) -->
+            <Border StrokeThickness="1" Stroke="LightGray" Padding="15" BackgroundColor="#E8F5E9"
+                    HorizontalOptions="FillAndExpand">
+                <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                    <Label Text="Your Money:" FontSize="22" FontAttributes="Bold" TextColor="#388E3C" />
+                    <Label Text="{Binding PlayerMoney, StringFormat='${0:F2}'}" FontSize="22" TextColor="#388E3C" />
+                </HorizontalStackLayout>
+            </Border>
+
+            <Label Text="Your Factory" FontSize="28" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#FF9800"/>
+
+            <CollectionView ItemsSource="{Binding OwnedMachines}" SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <Label Text="You don't own any factory machines. Visit the Shop to buy some!"
+                           HorizontalOptions="Center" VerticalOptions="Center" FontSize="16" TextColor="Gray" />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:DisplayMachine">
+                        <Border StrokeThickness="1" Stroke="DarkGray" Padding="15" Margin="0,10" BackgroundColor="White">
+                            <VerticalStackLayout Spacing="10">
+                                <Label Text="{Binding MachineDefinition.Name}" FontSize="22" FontAttributes="Bold" TextColor="#673AB7" />
+
+                                <!-- Machine Details -->
+                                <HorizontalStackLayout Spacing="5">
+                                    <Label Text="Input:" FontAttributes="Bold" />
+                                    <Label Text="{Binding MachineDefinition.InputQuantity, StringFormat='{0}x'}" />
+                                    <Label Text="{Binding MachineDefinition.InputProduceDefinitionId, Converter={StaticResource ProduceDefinitionIdToNameConverter}}" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Spacing="5">
+                                    <Label Text="Output:" FontAttributes="Bold" />
+                                    <Label Text="{Binding MachineDefinition.OutputQuantity, StringFormat='{0}x'}" />
+                                    <Label Text="{Binding MachineDefinition.OutputProduceDefinitionId, Converter={StaticResource ProduceDefinitionIdToNameConverter}}" />
+                                </HorizontalStackLayout>
+                                <Label Text="{Binding MachineDefinition.ProcessingTimeSeconds, StringFormat='Time: {0}s'}" TextColor="Gray" />
+
+                                <!-- Status and Progress -->
+                                <Label Text="{Binding StatusText}" FontAttributes="Italic" TextColor="#3F51B5" FontSize="16" />
+                                <ProgressBar Progress="{Binding ProcessingProgress}"
+                                             IsVisible="{Binding PlayerOwnedMachine.IsProcessing}"
+                                             ProgressColor="#4CAF50" />
+
+                                <!-- Action Buttons -->
+                                <HorizontalStackLayout HorizontalOptions="End" Spacing="10">
+                                    <Button Text="Start Processing"
+                                            Command="{Binding StartProcessingCommand}" CommandParameter="{Binding .}"
+                                            IsVisible="{Binding CanStartProcessing}"
+                                            BackgroundColor="#2196F3" TextColor="White" />
+                                    <Button Text="Collect"
+                                            Command="{Binding CollectCommand}" CommandParameter="{Binding .}"
+                                            IsVisible="{Binding CanCollect}"
+                                            BackgroundColor="#4CAF50" TextColor="White" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
