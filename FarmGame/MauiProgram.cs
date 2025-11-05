@@ -1,7 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using FarmGame.Services;
 using FarmGame.Views;
-using FarmGame.ViewModels; // Add this line
+using FarmGame.ViewModels;
+using Microsoft.Maui.Controls; // Add this for Application.Current.Dispatcher
 
 namespace FarmGame;
 
@@ -25,8 +26,17 @@ public static class MauiProgram
 
         // Register pages and viewmodels for DI
         builder.Services.AddTransient<InventoryPage>();
-        builder.Services.AddTransient<ShopPage>();       // Add this line
-        builder.Services.AddTransient<ShopViewModel>();  // Add this line
+        builder.Services.AddTransient<ShopPage>();
+        builder.Services.AddTransient<ShopViewModel>();
+
+        // Register FarmPage and FarmViewModel, passing the dispatcher
+        builder.Services.AddTransient<FarmPage>();
+        builder.Services.AddTransient<FarmViewModel>(serviceProvider =>
+        {
+            var databaseService = serviceProvider.GetRequiredService<DatabaseService>();
+            var dispatcher = Application.Current.Dispatcher; // Get the current application's dispatcher
+            return new FarmViewModel(databaseService, dispatcher);
+        });
 
         return builder.Build();
     }

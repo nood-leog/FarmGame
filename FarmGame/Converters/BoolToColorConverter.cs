@@ -1,10 +1,11 @@
-﻿// BoolToTextConverter.cs
+﻿// BoolToColorConverter.cs
 using System.Globalization;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Controls; // Add this for IValueConverter
 
 namespace FarmGame.Converters
 {
-    public class BoolToTextConverter : IValueConverter
+    public class BoolToColorConverter : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) // Add '?'
         {
@@ -13,10 +14,10 @@ namespace FarmGame.Converters
                 var parts = paramString.Split(',');
                 if (parts.Length == 2)
                 {
-                    return boolValue ? parts[0] : parts[1];
+                    return boolValue ? Color.FromArgb(parts[0]) : Color.FromArgb(parts[1]);
                 }
             }
-            return value;
+            return Colors.Transparent;
         }
 
         public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) // Add '?'

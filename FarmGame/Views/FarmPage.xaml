@@ -1,12 +1,98 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:FarmGame.ViewModels"
+             xmlns:models="clr-namespace:FarmGame.Models"
              x:Class="FarmGame.Views.FarmPage"
-             Title="Farm">
-	<VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center">
-		<Label
-            Text="Farm Page"
-            FontSize="30"
-            FontAttributes="Bold" />
-	</VerticalStackLayout>
+             Title="Farm"
+             x:DataType="viewmodels:FarmViewModel">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Buy Plot" Command="{Binding BuyPlotCommand}" Order="Primary" Priority="0" />
+        <!-- You'll need to implement BuyPlotCommand in your ViewModel -->
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10" Padding="10">
+
+        <!-- Row 0: Player Stats (Money, Water) -->
+        <Border Grid.Row="0" StrokeThickness="1" Stroke="LightGray" Padding="10" BackgroundColor="#E8F5E9"
+                HorizontalOptions="FillAndExpand">
+            <HorizontalStackLayout Spacing="15" HorizontalOptions="Center">
+                <Label Text="{Binding PlayerMoney, StringFormat='Money: ${0:F2}'}" FontSize="18" FontAttributes="Bold" TextColor="#388E3C" />
+                <Label Text="{Binding WaterCanStatus, StringFormat='Water: {0}'}" FontSize="18" FontAttributes="Bold" TextColor="#2196F3" />
+            </HorizontalStackLayout>
+        </Border>
+
+        <!-- Row 1: Selected Tool / Current Action & Tool Selection Buttons -->
+        <VerticalStackLayout Grid.Row="1" Spacing="5">
+            <Border StrokeThickness="1" Stroke="LightGray" Padding="8" BackgroundColor="#FFFDE7">
+                <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                    <Label Text="Action:" FontSize="16" TextColor="Gray" VerticalOptions="Center" />
+                    <Label Text="{Binding CurrentInteractionMode}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" TextColor="#FF9800" />
+                    <Button Text="Cancel" Command="{Binding ResetInteractionModeCommand}" BackgroundColor="#F44336" TextColor="White" FontSize="14" Padding="5" />
+                </HorizontalStackLayout>
+            </Border>
+
+            <HorizontalStackLayout HorizontalOptions="Center" Spacing="10" Margin="0,5,0,0">
+                <Button Text="Till (Hoe)" Command="{Binding SelectToolCommand}" CommandParameter="Hoe"
+                        BackgroundColor="{Binding IsTillingMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#2196F3,LightGray'}"
+                        TextColor="White" FontSize="16" />
+                <Button Text="Water" Command="{Binding SelectToolCommand}" CommandParameter="WateringCan"
+                        BackgroundColor="{Binding IsWateringMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#2196F3,LightGray'}"
+                        TextColor="White" FontSize="16" />
+                <Button Text="Harvest" Command="{Binding SelectToolCommand}" CommandParameter="Hand"
+                        BackgroundColor="{Binding IsHarvestingMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#2196F3,LightGray'}"
+                        TextColor="White" FontSize="16" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+
+        <!-- Row 2: Farm Plots Grid -->
+        <CollectionView Grid.Row="2" ItemsSource="{Binding FarmPlots}" SelectionMode="None">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Orientation="Vertical" Span="3" VerticalItemSpacing="5" HorizontalItemSpacing="5" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="viewmodels:DisplayPlot">
+                    <Border StrokeThickness="1" Stroke="DarkGray" BackgroundColor="LightGreen" HeightRequest="100" WidthRequest="100">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding PlotTappedCommand}" CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+                        <Grid>
+                            <Image Source="{Binding ImageSource}" Aspect="AspectFill" Opacity="0.8" />
+                            <Label Text="{Binding PlotStateText}"
+                                   HorizontalOptions="Center" VerticalOptions="Center"
+                                   FontAttributes="Bold" TextColor="Black" FontSize="12"
+                                   BackgroundColor="#AAFFFFFF" Padding="2,0" LineBreakMode="WordWrap" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Row 3: Available Seeds to Plant -->
+        <VerticalStackLayout Grid.Row="3" Spacing="5" Margin="0,10,0,0">
+            <Label Text="Select Seed to Plant" FontSize="18" FontAttributes="Bold" HorizontalOptions="Center" />
+            <CollectionView ItemsSource="{Binding AvailableSeeds}" SelectionMode="Single">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Horizontal" ItemSpacing="10" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:DisplayInventoryItem">
+                        <Border StrokeThickness="1" Stroke="Gray" Padding="5" BackgroundColor="LightBlue">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:FarmViewModel}}, Path=SelectSeedToPlantCommand}"
+                                                      CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+                            <VerticalStackLayout>
+                                <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="14" HorizontalOptions="Center" />
+                                <Label Text="{Binding Quantity, StringFormat='(x{0})'}" FontSize="12" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+                <CollectionView.EmptyView>
+                    <Label Text="No seeds in inventory. Visit the Shop!" HorizontalOptions="Center" VerticalOptions="Center" TextColor="Gray"/>
+                </CollectionView.EmptyView>
+            </CollectionView>
+        </VerticalStackLayout>
+    </Grid>
 </ContentPage>

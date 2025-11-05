@@ -80,4 +80,8 @@
 	  </MauiXaml>
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Resources\Images\rawpixel\" />
+	</ItemGroup>
+
 </Project>
