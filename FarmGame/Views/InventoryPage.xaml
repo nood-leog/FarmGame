@@ -1,12 +1,49 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:FarmGame.Models"
              x:Class="FarmGame.Views.InventoryPage"
              Title="Inventory">
-    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center">
-        <Label
-            Text="Inventory Page"
-            FontSize="30"
-            FontAttributes="Bold" />
-    </VerticalStackLayout>
+	<VerticalStackLayout Spacing="15" Padding="20">
+
+		<!-- Header for Money and Watering Can -->
+		<Border StrokeThickness="1" Stroke="LightGray" Padding="15" BackgroundColor="#E8F5E9"
+                HorizontalOptions="FillAndExpand">
+			<VerticalStackLayout Spacing="5">
+				<HorizontalStackLayout Spacing="10">
+					<Label Text="Money:" FontSize="22" FontAttributes="Bold" TextColor="#388E3C" />
+					<Label Text="{Binding PlayerMoney, StringFormat='${0:F2}'}" FontSize="22" TextColor="#388E3C" />
+				</HorizontalStackLayout>
+
+				<HorizontalStackLayout Spacing="10">
+					<Label Text="Watering Can:" FontSize="18" TextColor="#4CAF50" />
+					<Label Text="{Binding WaterCanStatus}" FontSize="18" TextColor="#4CAF50" />
+				</HorizontalStackLayout>
+			</VerticalStackLayout>
+		</Border>
+
+		<Label Text="Your Inventory" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" Margin="0,10,0,5" />
+
+		<!-- Inventory Items List -->
+		<CollectionView ItemsSource="{Binding InventoryItems}"
+                        SelectionMode="None"
+                        HeightRequest="400"  BackgroundColor="WhiteSmoke">
+			<CollectionView.EmptyView>
+				<Label Text="Inventory is empty. Go buy some seeds!"
+                       HorizontalOptions="Center" VerticalOptions="Center" FontSize="16" TextColor="Gray" />
+			</CollectionView.EmptyView>
+			<CollectionView.ItemTemplate>
+				<DataTemplate x:DataType="models:DisplayInventoryItem">
+					<Border StrokeThickness="0.5" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
+						<Grid ColumnDefinitions="*,Auto,Auto">
+							<Label Grid.Column="0" Text="{Binding Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+							<Label Grid.Column="1" Text="{Binding Quantity, StringFormat='x{0}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
+							<Label Grid.Column="2" Text="{Binding BaseSellPrice, StringFormat='Sell: ${0:F2}'}" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
+						</Grid>
+					</Border>
+				</DataTemplate>
+			</CollectionView.ItemTemplate>
+		</CollectionView>
+
+	</VerticalStackLayout>
 </ContentPage>
