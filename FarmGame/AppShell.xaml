@@ -11,49 +11,50 @@
     <Shell.Resources>
         <ResourceDictionary>
             <Style x:Key="BaseStyle" TargetType="Element">
-                <Setter Property="Shell.BackgroundColor" Value="{AppThemeBinding Dark={StaticResource DarkPrimary}, Light={StaticResource Primary}}" />
-                <Setter Property="Shell.ForegroundColor" Value="{AppThemeBinding Dark={StaticResource White}, Light={StaticResource White}}" />
-                <Setter Property="Shell.TitleColor" Value="{AppThemeBinding Dark={StaticResource White}, Light={StaticResource White}}" />
-                <Setter Property="Shell.DisabledColor" Value="#B4FFFFFF" />
-                <Setter Property="Shell.UnselectedColor" Value="{AppThemeBinding Dark={StaticResource DarkSecondary}, Light={StaticResource Secondary}}" />
-                <Setter Property="Shell.TabBarBackgroundColor" Value="{AppThemeBinding Dark={StaticResource DarkPrimary}, Light={StaticResource Primary}}" />
-                <Setter Property="Shell.TabBarForegroundColor" Value="{AppThemeBinding Dark={StaticResource White}, Light={StaticResource White}}" />
-                <Setter Property="Shell.TabBarUnselectedColor" Value="{AppThemeBinding Dark={StaticResource DarkSecondary}, Light={StaticResource Secondary}}" />
-                <Setter Property="Shell.TabBarTitleColor" Value="{AppThemeBinding Dark={StaticResource White}, Light={StaticResource White}}" />
+                <!-- Keep your existing color definitions here. If you used the fixed ones, they should be fine. -->
+                <Setter Property="Shell.BackgroundColor" Value="{AppThemeBinding Dark={StaticResource DarkBackground}, Light={StaticResource Primary}}" />
+                <Setter Property="Shell.ForegroundColor" Value="{AppThemeBinding Dark={StaticResource DarkForeground}, Light={StaticResource LightInverseForeground}}" />
+                <Setter Property="Shell.TitleColor" Value="{AppThemeBinding Dark={StaticResource DarkForeground}, Light={StaticResource LightInverseForeground}}" />
+                <Setter Property="Shell.DisabledColor" Value="{AppThemeBinding Dark={StaticResource DarkInverseForeground}, Light={StaticResource SecondaryDarkText}}" />
+                <Setter Property="Shell.UnselectedColor" Value="{AppThemeBinding Dark={StaticResource DarkInverseForeground}, Light={StaticResource Secondary}}" />
+
+                <Setter Property="Shell.TabBarBackgroundColor" Value="{AppThemeBinding Dark={StaticResource DarkBackground}, Light={StaticResource Primary}}" />
+                <Setter Property="Shell.TabBarForegroundColor" Value="{AppThemeBinding Dark={StaticResource DarkForeground}, Light={StaticResource LightInverseForeground}}" />
+                <Setter Property="Shell.TabBarUnselectedColor" Value="{AppThemeBinding Dark={StaticResource DarkInverseForeground}, Light={StaticResource SecondaryDarkText}}" />
+                <Setter Property="Shell.TabBarTitleColor" Value="{AppThemeBinding Dark={StaticResource DarkForeground}, Light={StaticResource LightInverseForeground}}" />
             </Style>
             <Style BasedOn="{StaticResource BaseStyle}" TargetType="TabBar" />
             <Style BasedOn="{StaticResource BaseStyle}" TargetType="ShellContent" />
         </ResourceDictionary>
     </Shell.Resources>
 
-    <!-- This is our main TabBar which will host all the game's main sections -->
     <TabBar>
         <!-- Farm Tab -->
         <ShellContent
             Title="Farm"
-            Icon="farm_icon.png"
+            Icon="farm_icon.png"  
             ContentTemplate="{DataTemplate views:FarmPage}"
             Route="FarmPage" />
 
-        <!-- Factory Tab -->
-        <ShellContent
+            <!-- Factory Tab -->
+            <ShellContent
             Title="Factory"
-            Icon="factory_icon.png"
-            ContentTemplate="{DataTemplate views:FactoryPage}"
+            Icon="factory_icon.png" 
+                ContentTemplate="{DataTemplate views:FactoryPage}"
             Route="FactoryPage" />
 
-        <!-- Shop Tab -->
-        <ShellContent
+                <!-- Shop Tab -->
+                <ShellContent
             Title="Shop"
-            Icon="shop_icon.png"
-            ContentTemplate="{DataTemplate views:ShopPage}"
+            Icon="shop_icon.png"   
+                    ContentTemplate="{DataTemplate views:ShopPage}"
             Route="ShopPage" />
 
-        <!-- Inventory Tab -->
-        <ShellContent
+                    <!-- Inventory Tab -->
+                    <ShellContent
             Title="Inventory"
-            Icon="inventory_icon.png"
-            ContentTemplate="{DataTemplate views:InventoryPage}"
+            Icon="inventory_icon.png" 
+                        ContentTemplate="{DataTemplate views:InventoryPage}"
             Route="InventoryPage" />
     </TabBar>
 
