@@ -1,10 +1,22 @@
-﻿namespace FarmGame.Views;
+﻿using FarmGame.Services;
+using FarmGame.ViewModels;
 
-public partial class ShopPage : ContentPage
+namespace FarmGame.Views;
+
+public partial class ShopPage : ContentPage // Ensure 'partial' keyword is present
 {
-    public ShopPage()
+    private readonly ShopViewModel _viewModel;
+
+    public ShopPage(ShopViewModel viewModel)
     {
-        Console.WriteLine("ShopPage selected!");
-        InitializeComponent();
+        InitializeComponent(); // This should now resolve
+        _viewModel = viewModel;
+        this.BindingContext = _viewModel;
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await _viewModel.LoadShopData();
     }
 }
