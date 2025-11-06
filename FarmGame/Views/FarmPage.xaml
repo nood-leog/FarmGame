@@ -3,15 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:viewmodels="clr-namespace:FarmGame.ViewModels"
              xmlns:models="clr-namespace:FarmGame.Models"
+             xmlns:converters="clr-namespace:FarmGame.Converters"
              x:Class="FarmGame.Views.FarmPage"
              Title="Farm"
              x:DataType="viewmodels:FarmViewModel">
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Buy Plot" Command="{Binding BuyPlotCommand}" Order="Primary" Priority="0" />
-        <!-- You'll need to implement BuyPlotCommand in your ViewModel -->
     </ContentPage.ToolbarItems>
+    <ContentPage.Resources>
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+    </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10" Padding="10">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="10" Padding="10">
+        <!-- ADDED A ROW FOR THE MESSAGE -->
 
         <!-- Row 0: Player Stats (Money, Water) -->
         <Border Grid.Row="0" StrokeThickness="1" Stroke="LightGray" Padding="10" BackgroundColor="#E8F5E9"
@@ -22,8 +26,14 @@
             </HorizontalStackLayout>
         </Border>
 
-        <!-- Row 1: Selected Tool / Current Action & Tool Selection Buttons -->
-        <VerticalStackLayout Grid.Row="1" Spacing="5">
+        <!-- Row 1: Current Message Display -->
+        <Label Grid.Row="1" Text="{Binding Message}"
+               HorizontalOptions="Center" VerticalOptions="Center"
+               FontSize="16" FontAttributes="Bold" TextColor="DarkOrange"
+               Margin="0,5,0,0" />
+
+        <!-- Row 2: Selected Tool / Current Action & Tool Selection Buttons -->
+        <VerticalStackLayout Grid.Row="2" Spacing="5">
             <Border StrokeThickness="1" Stroke="LightGray" Padding="8" BackgroundColor="#FFFDE7">
                 <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
                     <Label Text="Action:" FontSize="16" TextColor="Gray" VerticalOptions="Center" />
@@ -45,8 +55,8 @@
             </HorizontalStackLayout>
         </VerticalStackLayout>
 
-        <!-- Row 2: Farm Plots Grid -->
-        <CollectionView Grid.Row="2" ItemsSource="{Binding FarmPlots}" SelectionMode="None">
+        <!-- Row 3: Farm Plots Grid -->
+        <CollectionView Grid.Row="3" ItemsSource="{Binding FarmPlots}" SelectionMode="None">
             <CollectionView.ItemsLayout>
                 <GridItemsLayout Orientation="Vertical" Span="3" VerticalItemSpacing="5" HorizontalItemSpacing="5" />
             </CollectionView.ItemsLayout>
@@ -68,8 +78,8 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <!-- Row 3: Available Seeds to Plant -->
-        <VerticalStackLayout Grid.Row="3" Spacing="5" Margin="0,10,0,0">
+        <!-- Row 4: Available Seeds to Plant -->
+        <VerticalStackLayout Grid.Row="4" Spacing="5" Margin="0,10,0,0">
             <Label Text="Select Seed to Plant" FontSize="18" FontAttributes="Bold" HorizontalOptions="Center" />
             <CollectionView ItemsSource="{Binding AvailableSeeds}" SelectionMode="Single">
                 <CollectionView.ItemsLayout>

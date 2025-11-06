@@ -4,23 +4,24 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using Microsoft.Maui.Controls; // Add this for Shell.Current.DisplayAlert and IDispatcher
-using System.Linq; // Add this for LINQ extensions
+using Microsoft.Maui.Controls; // For Shell.Current.DisplayAlert and IDispatcher
+using System.Linq; // For LINQ extensions
 
 namespace FarmGame.ViewModels
 {
+    // DisplayPlot remains the same as before
     public class DisplayPlot : INotifyPropertyChanged
     {
         public Plot Plot { get; set; }
 
-        private ImageSource? _imageSource; // Add '?'
+        private ImageSource? _imageSource;
         public ImageSource? ImageSource
         {
             get => _imageSource;
             set => SetProperty(ref _imageSource, value);
         }
 
-        private string? _plotStateText; // Add '?'
+        private string? _plotStateText;
         public string? PlotStateText
         {
             get => _plotStateText;
@@ -34,12 +35,12 @@ namespace FarmGame.ViewModels
             set => SetProperty(ref _isTappable, value);
         }
 
-        public ICommand? PlotTappedCommand { get; set; } // Add '?'
+        public ICommand? PlotTappedCommand { get; set; }
 
-        public event PropertyChangedEventHandler? PropertyChanged; // Add '?'
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) => // Add '?'
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "") // Add '?'
+        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "")
         {
             if (EqualityComparer<T>.Default.Equals(backingStore, value)) return false;
             backingStore = value;
@@ -51,11 +52,13 @@ namespace FarmGame.ViewModels
     public class FarmViewModel : INotifyPropertyChanged
     {
         private readonly DatabaseService _databaseService;
-        private readonly IDispatcher _dispatcher; // ADD THIS FIELD
+        private readonly IDispatcher _dispatcher;
         private PlayerState _currentPlayerState;
-        private IDispatcherTimer? _waterRefillTimer; // Add '?'
-        private IDispatcherTimer? _cropGrowthTimer; // Add '?'
+        private IDispatcherTimer? _waterRefillTimer;
+        private IDispatcherTimer? _cropGrowthTimer;
+        private IDispatcherTimer? _messageTimer; // NEW: Timer for displaying temporary messages
 
+        // Player Stats
         private double _playerMoney;
         public double PlayerMoney
         {
@@ -63,71 +66,86 @@ namespace FarmGame.ViewModels
             set => SetProperty(ref _playerMoney, value);
         }
 
-        private string? _waterCanStatus; // Add '?'
+        private string? _waterCanStatus;
         public string? WaterCanStatus
         {
             get => _waterCanStatus;
             set => SetProperty(ref _waterCanStatus, value);
         }
 
+        // Farm Grid
         public ObservableCollection<DisplayPlot> FarmPlots { get; } = new ObservableCollection<DisplayPlot>();
 
-        private ToolDefinition? _selectedHoe; // Add '?'
+        // Tools
+        private ToolDefinition? _selectedHoe;
         public ToolDefinition? SelectedHoe
         {
             get => _selectedHoe;
             set => SetProperty(ref _selectedHoe, value);
         }
 
-        private ToolDefinition? _selectedWateringCan; // Add '?'
+        private ToolDefinition? _selectedWateringCan;
         public ToolDefinition? SelectedWateringCan
         {
             get => _selectedWateringCan;
             set => SetProperty(ref _selectedWateringCan, value);
         }
 
+        // Currently active interaction
         public enum FarmInteractionMode { None, Tilling, Planting, Watering, Harvesting }
         private FarmInteractionMode _currentInteractionMode = FarmInteractionMode.None;
 
-        private SeedDefinition? _selectedSeedToPlant; // Add '?'
+        private SeedDefinition? _selectedSeedToPlant;
 
+        // Available Seeds to Plant (from Inventory)
         public ObservableCollection<DisplayInventoryItem> AvailableSeeds { get; } = new ObservableCollection<DisplayInventoryItem>();
 
+        // NEW: Message property for UI feedback
+        private string? _message;
+        public string? Message
+        {
+            get => _message;
+            set => SetProperty(ref _message, value);
+        }
+
+
+        // Commands
         public ICommand SelectToolCommand { get; }
         public ICommand SelectSeedToPlantCommand { get; }
         public ICommand ResetInteractionModeCommand { get; }
-        public ICommand BuyPlotCommand { get; } // Add this command for the toolbar item
+        public ICommand BuyPlotCommand { get; }
 
-        public FarmViewModel(DatabaseService databaseService, IDispatcher dispatcher) // INJECT IDispatcher
+        public FarmViewModel(DatabaseService databaseService, IDispatcher dispatcher)
         {
             _databaseService = databaseService;
-            _dispatcher = dispatcher; // ASSIGN IT
+            _dispatcher = dispatcher;
 
             SelectToolCommand = new Command<string>(async (toolType) => await ExecuteSelectToolCommand(toolType));
-            SelectSeedToPlantCommand = new Command<DisplayInventoryItem>(async (seedItem) => await ExecuteSelectSeedToPlantCommand(seedItem)); // MAKE ASYNC
-            ResetInteractionModeCommand = new Command(() => CurrentInteractionMode = FarmInteractionMode.None);
-            BuyPlotCommand = new Command(async () => await ExecuteBuyPlotCommand()); // Initialize BuyPlotCommand
+            SelectSeedToPlantCommand = new Command<DisplayInventoryItem>(async (seedItem) => await ExecuteSelectSeedToPlantCommand(seedItem));
+            ResetInteractionModeCommand = new Command(() =>
+            {
+                CurrentInteractionMode = FarmInteractionMode.None;
+                ShowMessage("Action cancelled.");
+            });
+            BuyPlotCommand = new Command(async () => await ExecuteBuyPlotCommand());
         }
 
         public async Task LoadFarmData()
         {
-            _currentPlayerState = await _databaseService.GetItemAsync<PlayerState>(1);
-            if (_currentPlayerState != null)
+            _currentPlayerState = await _databaseService.GetItemAsync<PlayerState>(1) ?? new PlayerState();
+            PlayerMoney = _currentPlayerState.Money;
+
+            if (_currentPlayerState.SelectedHoeToolId.HasValue)
             {
-                PlayerMoney = _currentPlayerState.Money;
-
-                if (_currentPlayerState.SelectedHoeToolId.HasValue)
-                {
-                    SelectedHoe = await _databaseService.GetItemAsync<ToolDefinition>(_currentPlayerState.SelectedHoeToolId.Value);
-                }
-                if (_currentPlayerState.SelectedWaterToolId.HasValue)
-                {
-                    SelectedWateringCan = await _databaseService.GetItemAsync<ToolDefinition>(_currentPlayerState.SelectedWaterToolId.Value);
-                }
-
-                UpdateWaterCanStatus();
-                StartWaterRefillTimer();
+                SelectedHoe = await _databaseService.GetItemAsync<ToolDefinition>(_currentPlayerState.SelectedHoeToolId.Value);
             }
+            if (_currentPlayerState.SelectedWaterToolId.HasValue)
+            {
+                SelectedWateringCan = await _databaseService.GetItemAsync<ToolDefinition>(_currentPlayerState.SelectedWaterToolId.Value);
+            }
+
+            UpdateWaterCanStatus();
+            StartWaterRefillTimer();
 
             FarmPlots.Clear();
             var plots = await _databaseService.GetItemsAsync<Plot>();
@@ -136,15 +154,31 @@ namespace FarmGame.ViewModels
                 var displayPlot = new DisplayPlot
                 {
                     Plot = plot,
-                    PlotTappedCommand = new Command<DisplayPlot>(async (p) => await OnPlotTapped(p!)) // Using null-forgiving operator
+                    PlotTappedCommand = new Command<DisplayPlot>(async (p) => await OnPlotTapped(p!))
                 };
-                await UpdatePlotDisplay(displayPlot); // Make sure this is awaited
+                await UpdatePlotDisplay(displayPlot);
                 FarmPlots.Add(displayPlot);
             }
 
-            await LoadAvailableSeeds(); // Ensure this is awaited
+            await LoadAvailableSeeds();
             StartCropGrowthTimer();
         }
+
+        // NEW: Method to display temporary messages
+        private void ShowMessage(string message, bool isError = false)
+        {
+            Message = message;
+            _messageTimer?.Stop();
+            _messageTimer = _dispatcher.CreateTimer();
+            _messageTimer.Interval = TimeSpan.FromSeconds(isError ? 4 : 2); // Longer for errors
+            _messageTimer.Tick += (s, e) =>
+            {
+                Message = null; // Clear message
+                _messageTimer?.Stop();
+            };
+            _messageTimer.Start();
+        }
+
 
         // --- Interaction Mode Management ---
         public FarmInteractionMode CurrentInteractionMode
@@ -157,6 +191,11 @@ namespace FarmGame.ViewModels
                 OnPropertyChanged(nameof(IsPlantingMode));
                 OnPropertyChanged(nameof(IsWateringMode));
                 OnPropertyChanged(nameof(IsHarvestingMode));
+                // Clear selected seed when mode changes (unless it's planting mode)
+                if (value != FarmInteractionMode.Planting)
+                {
+                    _selectedSeedToPlant = null;
+                }
             }
         }
 
@@ -169,44 +208,45 @@ namespace FarmGame.ViewModels
         // --- Tool/Seed Selection Commands ---
         private async Task ExecuteSelectToolCommand(string toolType)
         {
-            _selectedSeedToPlant = null;
+            _selectedSeedToPlant = null; // Always reset selected seed when changing tool mode
 
             switch (toolType)
             {
                 case "Hoe":
                     CurrentInteractionMode = FarmInteractionMode.Tilling;
-                    await Shell.Current.DisplayAlert("Tool Selected", $"You selected the {SelectedHoe?.Name}.", "OK"); // Use Shell.Current
+                    ShowMessage($"You selected the {SelectedHoe?.Name}.", false);
                     break;
                 case "WateringCan":
                     CurrentInteractionMode = FarmInteractionMode.Watering;
-                    await Shell.Current.DisplayAlert("Tool Selected", $"You selected the {SelectedWateringCan?.Name}.", "OK"); // Use Shell.Current
+                    ShowMessage($"You selected the {SelectedWateringCan?.Name}.", false);
                     break;
                 case "Hand":
                     CurrentInteractionMode = FarmInteractionMode.Harvesting;
-                    await Shell.Current.DisplayAlert("Tool Selected", "You are ready to harvest!", "OK"); // Use Shell.Current
+                    ShowMessage("You are ready to harvest!", false);
                     break;
                 default:
                     CurrentInteractionMode = FarmInteractionMode.None;
+                    ShowMessage("Action cancelled.", false);
                     break;
             }
         }
 
-        private async Task ExecuteSelectSeedToPlantCommand(DisplayInventoryItem seedItem) // MAKE ASYNC TASK
+        private async Task ExecuteSelectSeedToPlantCommand(DisplayInventoryItem seedItem)
         {
             if (seedItem == null || seedItem.Quantity <= 0)
             {
                 _selectedSeedToPlant = null;
                 CurrentInteractionMode = FarmInteractionMode.None;
-                await Shell.Current.DisplayAlert("No Seeds", "You don't have any of those seeds.", "OK"); // Use Shell.Current
+                ShowMessage("You don't have any of those seeds.", true); // Error message
                 return;
             }
 
-            var seedDef = await _databaseService.GetItemAsync<SeedDefinition>(seedItem.ProduceDefinitionId); // Now points to SeedDefinition.Id
+            var seedDef = await _databaseService.GetItemAsync<SeedDefinition>(seedItem.ProduceDefinitionId);
             if (seedDef != null)
             {
                 _selectedSeedToPlant = seedDef;
                 CurrentInteractionMode = FarmInteractionMode.Planting;
-                await Shell.Current.DisplayAlert("Seed Selected", $"Ready to plant {seedDef.Name}.", "OK"); // Use Shell.Current
+                ShowMessage($"Ready to plant {seedDef.Name}.", false);
             }
         }
 
@@ -225,10 +265,12 @@ namespace FarmGame.ViewModels
                     if (_selectedSeedToPlant != null)
                     {
                         await PlantSeed(displayPlot.Plot, _selectedSeedToPlant);
+                        // No need to reset _selectedSeedToPlant here if we want to allow planting multiple
+                        // plots with the same selected seed until another tool/seed is chosen.
                     }
                     else
                     {
-                        await Shell.Current.DisplayAlert("Error", "No seed selected to plant.", "OK"); // Use Shell.Current
+                        ShowMessage("No seed selected to plant.", true);
                     }
                     break;
                 case FarmInteractionMode.Watering:
@@ -238,10 +280,10 @@ namespace FarmGame.ViewModels
                     await HarvestPlot(displayPlot.Plot);
                     break;
                 case FarmInteractionMode.None:
-                    await Shell.Current.DisplayAlert("Plot Info", $"Plot {displayPlot.Plot.PlotNumber}: {displayPlot.PlotStateText}", "OK"); // Use Shell.Current
+                    ShowMessage($"Plot {displayPlot.Plot.PlotNumber}: {displayPlot.PlotStateText}", false);
                     break;
             }
-            await UpdatePlotDisplay(displayPlot); // Make sure this is awaited
+            await UpdatePlotDisplay(displayPlot);
             await _databaseService.SaveItemAsync(displayPlot.Plot);
             await LoadAvailableSeeds();
             UpdateWaterCanStatus();
@@ -257,11 +299,11 @@ namespace FarmGame.ViewModels
                 plot.PlantTime = null;
                 plot.GrowthProgress = 0;
                 plot.IsWatered = false;
-                await Shell.Current.DisplayAlert("Action", $"Plot {plot.PlotNumber} tilled.", "OK"); // Use Shell.Current
+                ShowMessage($"Plot {plot.PlotNumber} tilled.", false);
             }
             else
             {
-                await Shell.Current.DisplayAlert("Action", $"Plot {plot.PlotNumber} cannot be tilled right now.", "OK"); // Use Shell.Current
+                ShowMessage($"Plot {plot.PlotNumber} cannot be tilled right now.", true);
             }
         }
 
@@ -270,11 +312,11 @@ namespace FarmGame.ViewModels
             if (plot.IsTilled && plot.PlantedSeedDefinitionId == null)
             {
                 var inventorySeedItem = (await _databaseService.GetItemsAsync<InventoryItem>())
-                                        .FirstOrDefault(i => i.ProduceDefinitionId == seed.Id && i.IsSeed && i.Quantity > 0); // Use seed.Id
+                                        .FirstOrDefault(i => i.ProduceDefinitionId == seed.Id && i.IsSeed && i.Quantity > 0);
 
                 if (inventorySeedItem != null)
                 {
-                    plot.PlantedSeedDefinitionId = seed.Id; // Store SeedDefinition.Id in Plot
+                    plot.PlantedSeedDefinitionId = seed.Id;
                     plot.PlantTime = DateTime.UtcNow;
                     plot.GrowthProgress = 0;
                     plot.IsWatered = false;
@@ -289,16 +331,16 @@ namespace FarmGame.ViewModels
                     {
                         await _databaseService.SaveItemAsync(inventorySeedItem);
                     }
-                    await Shell.Current.DisplayAlert("Action", $"Planted {seed.Name} on Plot {plot.PlotNumber}.", "OK"); // Use Shell.Current
+                    ShowMessage($"Planted {seed.Name} on Plot {plot.PlotNumber}.", false);
                 }
                 else
                 {
-                    await Shell.Current.DisplayAlert("Error", $"You do not have any {seed.Name} to plant.", "OK"); // Use Shell.Current
+                    ShowMessage($"You do not have any {seed.Name} to plant.", true);
                 }
             }
             else
             {
-                await Shell.Current.DisplayAlert("Error", $"Plot {plot.PlotNumber} is not ready for planting.", "OK"); // Use Shell.Current
+                ShowMessage($"Plot {plot.PlotNumber} is not ready for planting.", true);
             }
         }
 
@@ -309,15 +351,15 @@ namespace FarmGame.ViewModels
                 plot.IsWatered = true;
                 _currentPlayerState.CurrentWater -= 1;
                 await _databaseService.SaveItemAsync(_currentPlayerState);
-                await Shell.Current.DisplayAlert("Action", $"Plot {plot.PlotNumber} watered.", "OK"); // Use Shell.Current
+                ShowMessage($"Plot {plot.PlotNumber} watered.", false);
             }
             else if (_currentPlayerState.CurrentWater < 1)
             {
-                await Shell.Current.DisplayAlert("Error", "Not enough water in your watering can!", "OK"); // Use Shell.Current
+                ShowMessage("Not enough water in your watering can!", true);
             }
             else
             {
-                await Shell.Current.DisplayAlert("Error", $"Plot {plot.PlotNumber} does not need water or nothing is planted.", "OK"); // Use Shell.Current
+                ShowMessage($"Plot {plot.PlotNumber} does not need water or nothing is planted.", true);
             }
         }
 
@@ -328,7 +370,7 @@ namespace FarmGame.ViewModels
                 var seedDef = await _databaseService.GetItemAsync<SeedDefinition>(plot.PlantedSeedDefinitionId.Value);
                 if (seedDef == null)
                 {
-                    await Shell.Current.DisplayAlert("Error", $"Could not find seed definition for plot {plot.PlotNumber}.", "OK"); // Use Shell.Current
+                    ShowMessage($"Could not find seed definition for plot {plot.PlotNumber}.", true);
                     return;
                 }
 
@@ -356,22 +398,22 @@ namespace FarmGame.ViewModels
                 plot.GrowthProgress = 0;
                 plot.IsWatered = false;
 
-                await Shell.Current.DisplayAlert("Action", $"Harvested {seedDef.Name} from Plot {plot.PlotNumber}.", "OK"); // Use Shell.Current
+                ShowMessage($"Harvested {seedDef.Name} from Plot {plot.PlotNumber}.", false);
             }
             else
             {
-                await Shell.Current.DisplayAlert("Error", $"Nothing to harvest on Plot {plot.PlotNumber}.", "OK"); // Use Shell.Current
+                ShowMessage($"Nothing to harvest on Plot {plot.PlotNumber}.", true);
             }
         }
 
         // --- Buy Plot Command ---
         private async Task ExecuteBuyPlotCommand()
         {
-            double plotCost = 100 + (FarmPlots.Count * 50); // Example increasing cost
-            if (_currentPlayerState.Money >= plotCost)
+            double plotCost = 100 + (FarmPlots.Count * 50);
+            bool confirm = await Shell.Current.DisplayAlert("Buy New Plot", $"Do you want to buy a new plot for ${plotCost:F2}?", "Yes", "No");
+            if (confirm)
             {
-                bool confirm = await Shell.Current.DisplayAlert("Buy New Plot", $"Do you want to buy a new plot for ${plotCost:F2}?", "Yes", "No");
-                if (confirm)
+                if (_currentPlayerState.Money >= plotCost)
                 {
                     _currentPlayerState.Money -= plotCost;
                     await _databaseService.SaveItemAsync(_currentPlayerState);
@@ -388,18 +430,18 @@ namespace FarmGame.ViewModels
                     await UpdatePlotDisplay(displayPlot);
                     FarmPlots.Add(displayPlot);
 
-                    await Shell.Current.DisplayAlert("Purchased", $"New plot purchased for ${plotCost:F2}!", "OK");
+                    ShowMessage($"New plot purchased for ${plotCost:F2}!", false);
                 }
-            }
-            else
-            {
-                await Shell.Current.DisplayAlert("Cannot Afford", $"You need ${plotCost:F2} to buy a new plot.", "OK");
+                else
+                {
+                    ShowMessage($"You need ${plotCost:F2} to buy a new plot.", true);
+                }
             }
         }
 
 
-        // --- Plot Display Update Logic ---
-        private async Task UpdatePlotDisplay(DisplayPlot displayPlot) // Make async Task
+        // UpdatePlotDisplay, Water Refill Timer, Crop Growth Timer, LoadAvailableSeeds, OnDisappearing remain the same
+        private async Task UpdatePlotDisplay(DisplayPlot displayPlot)
         {
             var plot = displayPlot.Plot;
             if (plot.PlantedSeedDefinitionId.HasValue)
@@ -445,7 +487,6 @@ namespace FarmGame.ViewModels
             }
         }
 
-        // --- Water Refill Timer ---
         private void UpdateWaterCanStatus()
         {
             if (_currentPlayerState != null && SelectedWateringCan != null)
@@ -464,7 +505,7 @@ namespace FarmGame.ViewModels
 
             if (_currentPlayerState != null && _currentPlayerState.WaterRefillRate > 0)
             {
-                _waterRefillTimer = _dispatcher.CreateTimer(); // Use _dispatcher instance
+                _waterRefillTimer = _dispatcher.CreateTimer();
                 _waterRefillTimer.Interval = TimeSpan.FromSeconds(1);
                 _waterRefillTimer.Tick += async (s, e) =>
                 {
@@ -487,23 +528,21 @@ namespace FarmGame.ViewModels
             }
         }
 
-        // --- Crop Growth Timer ---
         private void StartCropGrowthTimer()
         {
             _cropGrowthTimer?.Stop();
 
-            _cropGrowthTimer = _dispatcher.CreateTimer(); // Use _dispatcher instance
+            _cropGrowthTimer = _dispatcher.CreateTimer();
             _cropGrowthTimer.Interval = TimeSpan.FromSeconds(1);
             _cropGrowthTimer.Tick += async (s, e) =>
             {
-                // Removed 'plotsUpdated' variable as it was unused.
                 foreach (var displayPlot in FarmPlots)
                 {
                     var plot = displayPlot.Plot;
                     if (plot.PlantedSeedDefinitionId.HasValue && plot.IsWatered && plot.GrowthProgress < 1.0)
                     {
                         var seedDef = await _databaseService.GetItemAsync<SeedDefinition>(plot.PlantedSeedDefinitionId.Value);
-                        if (seedDef != null && seedDef.GrowTimeSeconds > 0 && plot.PlantTime.HasValue) // Check PlantTime.HasValue
+                        if (seedDef != null && seedDef.GrowTimeSeconds > 0 && plot.PlantTime.HasValue)
                         {
                             TimeSpan timeSincePlant = DateTime.UtcNow - plot.PlantTime.Value;
                             double newProgress = timeSincePlant.TotalSeconds / seedDef.GrowTimeSeconds;
@@ -513,7 +552,7 @@ namespace FarmGame.ViewModels
                             if (plot.GrowthProgress != newProgress)
                             {
                                 plot.GrowthProgress = newProgress;
-                                await UpdatePlotDisplay(displayPlot); // Make sure this is awaited
+                                await UpdatePlotDisplay(displayPlot);
                                 await _databaseService.SaveItemAsync(plot);
                             }
                         }
@@ -535,7 +574,7 @@ namespace FarmGame.ViewModels
                     AvailableSeeds.Add(new DisplayInventoryItem
                     {
                         Id = item.Id,
-                        ProduceDefinitionId = item.ProduceDefinitionId, // Include ProduceDefinitionId
+                        ProduceDefinitionId = item.ProduceDefinitionId,
                         Name = seedDef.Name,
                         Quantity = item.Quantity,
                         IsSeed = true,
@@ -549,18 +588,19 @@ namespace FarmGame.ViewModels
         {
             _waterRefillTimer?.Stop();
             _cropGrowthTimer?.Stop();
+            _messageTimer?.Stop(); // NEW: Stop the message timer too
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged; // Add '?'
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) // Add '?'
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         protected bool SetProperty<T>(ref T backingStore, T value,
-            [CallerMemberName] string? propertyName = null, // Add '?'
-            Action? onChanged = null) // Add '?'
+            [CallerMemberName] string? propertyName = null,
+            Action? onChanged = null)
         {
             if (EqualityComparer<T>.Default.Equals(backingStore, value))
                 return false;
