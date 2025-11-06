@@ -62,11 +62,9 @@ namespace FarmGame.ViewModels
     public class FarmViewModel : BaseViewModel // Inherit from BaseViewModel
     {
         private readonly DatabaseService _databaseService;
-        // _dispatcher is now inherited from BaseViewModel
         private PlayerState _currentPlayerState;
         private IDispatcherTimer? _waterRefillTimer;
         private IDispatcherTimer? _cropGrowthTimer;
-        // _messageTimer and Message property are now inherited from BaseViewModel
 
         // Player Stats
         private double _playerMoney;
@@ -116,10 +114,9 @@ namespace FarmGame.ViewModels
         public ICommand ResetInteractionModeCommand { get; }
         public ICommand BuyPlotCommand { get; }
 
-        public FarmViewModel(DatabaseService databaseService, IDispatcher dispatcher) : base(dispatcher) // Pass dispatcher to base
+        public FarmViewModel(DatabaseService databaseService, IDispatcher dispatcher) : base(dispatcher)
         {
             _databaseService = databaseService;
-            // _dispatcher is now handled by BaseViewModel
 
             SelectToolCommand = new Command<string>(async (toolType) => await ExecuteSelectToolCommand(toolType));
             SelectSeedToPlantCommand = new Command<DisplayInventoryItem>(async (seedItem) => await ExecuteSelectSeedToPlantCommand(seedItem));
@@ -161,7 +158,7 @@ namespace FarmGame.ViewModels
                 FarmPlots.Add(displayPlot);
             }
 
-            await LoadAvailableSeeds();
+            await RefreshAvailableSeedsDisplay(); // Initial load for seeds
             StartCropGrowthTimer();
         }
 
@@ -240,6 +237,9 @@ namespace FarmGame.ViewModels
         {
             if (displayPlot == null || displayPlot.Plot == null) return;
 
+            // Flag to decide if seeds display needs updating
+            bool seedsMayHaveChanged = false;
+
             switch (CurrentInteractionMode)
             {
                 case FarmInteractionMode.Tilling:
@@ -248,7 +248,8 @@ namespace FarmGame.ViewModels
                 case FarmInteractionMode.Planting:
                     if (_selectedSeedToPlant != null)
                     {
-                        await PlantSeed(displayPlot.Plot, _selectedSeedToPlant);
+                        var plantResult = await PlantSeed(displayPlot.Plot, _selectedSeedToPlant);
+                        if (plantResult) seedsMayHaveChanged = true; // Only refresh seeds if planting was successful
                     }
                     else
                     {
@@ -260,14 +261,21 @@ namespace FarmGame.ViewModels
                     break;
                 case FarmInteractionMode.Harvesting:
                     await HarvestPlot(displayPlot.Plot);
+                    seedsMayHaveChanged = true; // Harvesting adds produce, which affects sellable inventory, and could free up seed space (less direct impact on seeds but good to refresh)
                     break;
                 case FarmInteractionMode.None:
                     ShowMessage($"Plot {displayPlot.Plot.PlotNumber}: {displayPlot.PlotStateText}", false);
                     break;
             }
+
+            // Only refresh seeds if an action that affects them took place
+            if (seedsMayHaveChanged)
+            {
+                await RefreshAvailableSeedsDisplay(); // ONLY refresh when necessary
+            }
+
             await UpdatePlotDisplay(displayPlot);
             await _databaseService.SaveItemAsync(displayPlot.Plot);
-            await LoadAvailableSeeds();
             UpdateWaterCanStatus();
             PlayerMoney = _currentPlayerState.Money;
         }
@@ -289,7 +297,7 @@ namespace FarmGame.ViewModels
             }
         }
 
-        private async Task PlantSeed(Plot plot, SeedDefinition seed)
+        private async Task<bool> PlantSeed(Plot plot, SeedDefinition seed)
         {
             if (plot.IsTilled && plot.PlantedSeedDefinitionId == null)
             {
@@ -314,15 +322,18 @@ namespace FarmGame.ViewModels
                         await _databaseService.SaveItemAsync(inventorySeedItem);
                     }
                     ShowMessage($"Planted {seed.Name} on Plot {plot.PlotNumber}.", false);
+                    return true; // Successfully planted
                 }
                 else
                 {
                     ShowMessage($"You do not have any {seed.Name} to plant.", true);
+                    return false; // Failed to plant
                 }
             }
             else
             {
                 ShowMessage($"Plot {plot.PlotNumber} is not ready for planting.", true);
+                return false; // Failed to plant
             }
         }
 
@@ -392,8 +403,7 @@ namespace FarmGame.ViewModels
         private async Task ExecuteBuyPlotCommand()
         {
             double plotCost = 100 + (FarmPlots.Count * 50);
-            // This is still a Shell.Current.DisplayAlert as it's a confirmation, not a simple feedback message.
-            bool confirm = await Shell.Current.DisplayAlert("Buy New Plot", $"Do you want to buy a new plot for ${plotCost:F2}?", "Yes", "No");
+            bool confirm = await Shell.Current!.DisplayAlert("Buy New Plot", $"Do you want to buy a new plot for ${plotCost:F2}?", "Yes", "No");
             if (confirm)
             {
                 if (_currentPlayerState.Money >= plotCost)
@@ -543,19 +553,25 @@ namespace FarmGame.ViewModels
             _cropGrowthTimer.Start();
         }
 
-        private async Task LoadAvailableSeeds()
+        // Optimized for differential updates to prevent UI flicker
+        private async Task RefreshAvailableSeedsDisplay()
         {
-            AvailableSeeds.Clear();
-            var inventoryItems = await _databaseService.GetItemsAsync<InventoryItem>();
-            foreach (var item in inventoryItems.Where(i => i.IsSeed && i.Quantity > 0))
+            // 1. Get the current actual seed inventory from the database
+            var currentInventorySeeds = (await _databaseService.GetItemsAsync<InventoryItem>())
+                                        .Where(i => i.IsSeed && i.Quantity > 0)
+                                        .ToList();
+
+            // 2. Create a temporary list of DisplayInventoryItem from the current inventory
+            var newDisplaySeeds = new List<DisplayInventoryItem>();
+            foreach (var item in currentInventorySeeds)
             {
                 var seedDef = await _databaseService.GetItemAsync<SeedDefinition>(item.ProduceDefinitionId);
                 if (seedDef != null)
                 {
-                    AvailableSeeds.Add(new DisplayInventoryItem
+                    newDisplaySeeds.Add(new DisplayInventoryItem
                     {
-                        Id = item.Id,
-                        ProduceDefinitionId = item.ProduceDefinitionId,
+                        Id = item.Id, // This is the InventoryItem PK
+                        ProduceDefinitionId = item.ProduceDefinitionId, // This is the SeedDefinition PK
                         Name = seedDef.Name,
                         Quantity = item.Quantity,
                         IsSeed = true,
@@ -563,11 +579,47 @@ namespace FarmGame.ViewModels
                     });
                 }
             }
+
+            // 3. Perform differential update on AvailableSeeds (the ObservableCollection bound to UI)
+
+            // Remove items that are no longer in inventory or have 0 quantity
+            for (int i = AvailableSeeds.Count - 1; i >= 0; i--)
+            {
+                var existingDisplayItem = AvailableSeeds[i];
+                var matchingNewItem = newDisplaySeeds.FirstOrDefault(ns => ns.Id == existingDisplayItem.Id); // Match by InventoryItem's Id
+
+                if (matchingNewItem == null || matchingNewItem.Quantity == 0)
+                {
+                    AvailableSeeds.RemoveAt(i);
+                }
+            }
+
+            // Update quantities of existing items and add new items
+            foreach (var newSeed in newDisplaySeeds)
+            {
+                var existingDisplayItem = AvailableSeeds.FirstOrDefault(es => es.Id == newSeed.Id);
+
+                if (existingDisplayItem != null)
+                {
+                    // Update quantity if it has changed
+                    if (existingDisplayItem.Quantity != newSeed.Quantity)
+                    {
+                        existingDisplayItem.Quantity = newSeed.Quantity;
+                        // OnPropertyChanged for Quantity on DisplayInventoryItem will handle UI update
+                    }
+                }
+                else
+                {
+                    // Add new seeds to the collection
+                    AvailableSeeds.Add(newSeed);
+                }
+            }
         }
 
-        public override void OnDisappearing() // Override OnDisappearing
+
+        public override void OnDisappearing()
         {
-            base.OnDisappearing(); // Call base to stop message timer
+            base.OnDisappearing();
             _waterRefillTimer?.Stop();
             _cropGrowthTimer?.Stop();
         }
