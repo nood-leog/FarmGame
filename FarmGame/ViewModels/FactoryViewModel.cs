@@ -4,19 +4,75 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using Microsoft.Maui.Controls; // For Shell.Current.DisplayAlert and IDispatcher
-using System.Linq; // For LINQ extensions
+using Microsoft.Maui.Controls;
+using System.Linq;
 
 namespace FarmGame.ViewModels
 {
-    public class FactoryViewModel : INotifyPropertyChanged
+    // DisplayMachine remains the same
+    public class DisplayMachine : INotifyPropertyChanged
+    {
+        public PlayerOwnedMachine PlayerOwnedMachine { get; set; }
+        public MachineDefinition MachineDefinition { get; set; }
+
+        private string _statusText;
+        public string StatusText
+        {
+            get => _statusText;
+            set => SetProperty(ref _statusText, value);
+        }
+
+        private double _processingProgress;
+        public double ProcessingProgress
+        {
+            get => _processingProgress;
+            set => SetProperty(ref _processingProgress, value);
+        }
+
+        private bool _canStartProcessing;
+        public bool CanStartProcessing
+        {
+            get => _canStartProcessing;
+            set => SetProperty(ref _canStartProcessing, value);
+        }
+
+        private bool _canCollect;
+        public bool CanCollect
+        {
+            get => _canCollect;
+            set => SetProperty(ref _canCollect, value);
+        }
+
+        public List<ProduceDefinition> AvailableInputProduce { get; set; } = new List<ProduceDefinition>();
+        private ProduceDefinition? _selectedInputProduce;
+        public ProduceDefinition? SelectedInputProduce
+        {
+            get => _selectedInputProduce;
+            set => SetProperty(ref _selectedInputProduce, value);
+        }
+
+        public ICommand StartProcessingCommand { get; set; }
+        public ICommand CollectCommand { get; set; }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "")
+        {
+            if (EqualityComparer<T>.Default.Equals(backingStore, value)) return false;
+            backingStore = value;
+            OnPropertyChanged(propertyName);
+            return true;
+        }
+    }
+
+    public class FactoryViewModel : BaseViewModel // Inherit from BaseViewModel
     {
         private readonly DatabaseService _databaseService;
-        private readonly IDispatcher _dispatcher;
+        // _dispatcher is now handled by BaseViewModel
         private PlayerState _currentPlayerState;
         private IDispatcherTimer? _factoryProcessingTimer;
 
-        // Player Money (for context, though not directly used in Factory logic currently)
         private double _playerMoney;
         public double PlayerMoney
         {
@@ -26,15 +82,14 @@ namespace FarmGame.ViewModels
 
         public ObservableCollection<DisplayMachine> OwnedMachines { get; } = new ObservableCollection<DisplayMachine>();
 
-        public FactoryViewModel(DatabaseService databaseService, IDispatcher dispatcher)
+        public FactoryViewModel(DatabaseService databaseService, IDispatcher dispatcher) : base(dispatcher) // Pass dispatcher to base
         {
             _databaseService = databaseService;
-            _dispatcher = dispatcher;
         }
 
         public async Task LoadFactoryData()
         {
-            _currentPlayerState = await _databaseService.GetItemAsync<PlayerState>(1) ?? new PlayerState(); // Ensure it's not null
+            _currentPlayerState = await _databaseService.GetItemAsync<PlayerState>(1) ?? new PlayerState();
             PlayerMoney = _currentPlayerState.Money;
 
             OwnedMachines.Clear();
@@ -48,14 +103,14 @@ namespace FarmGame.ViewModels
                     {
                         PlayerOwnedMachine = playerMachine,
                         MachineDefinition = machineDef,
-                        StartProcessingCommand = new Command<DisplayMachine>(async (dm) => await StartProcessing(dm!)), // Null-forgiving
-                        CollectCommand = new Command<DisplayMachine>(async (dm) => await CollectOutput(dm!)) // Null-forgiving
+                        StartProcessingCommand = new Command<DisplayMachine>(async (dm) => await StartProcessing(dm!)),
+                        CollectCommand = new Command<DisplayMachine>(async (dm) => await CollectOutput(dm!))
                     };
-                    await UpdateMachineDisplay(displayMachine); // Update its status and interactivity
+                    await UpdateMachineDisplay(displayMachine);
                     OwnedMachines.Add(displayMachine);
                 }
             }
-            StartFactoryProcessingTimer(); // Start the timer to update processing progress
+            StartFactoryProcessingTimer();
         }
 
         private async Task UpdateMachineDisplay(DisplayMachine displayMachine)
@@ -77,7 +132,8 @@ namespace FarmGame.ViewModels
                     if (progress >= 1.0)
                     {
                         displayMachine.ProcessingProgress = 1.0;
-                        displayMachine.StatusText = $"Ready to Collect {machineDef.OutputQuantity}x {(await _databaseService.GetItemAsync<ProduceDefinition>(machineDef.OutputProduceDefinitionId))?.Name}";
+                        string outputProduceName = (await _databaseService.GetItemAsync<ProduceDefinition>(machineDef.OutputProduceDefinitionId))?.Name ?? "Unknown";
+                        displayMachine.StatusText = $"Ready to Collect {machineDef.OutputQuantity}x {outputProduceName}";
                         displayMachine.CanCollect = true;
                     }
                     else
@@ -89,12 +145,11 @@ namespace FarmGame.ViewModels
                 }
                 else
                 {
-                    // Should not happen, but reset if data is inconsistent
                     playerMachine.IsProcessing = false;
                     playerMachine.ProcessStartTime = null;
                     displayMachine.StatusText = "Error: Resetting...";
                     await _databaseService.SaveItemAsync(playerMachine);
-                    await UpdateMachineDisplay(displayMachine); // Re-evaluate
+                    await UpdateMachineDisplay(displayMachine);
                 }
             }
             else // Machine is idle
@@ -123,7 +178,7 @@ namespace FarmGame.ViewModels
 
             if (playerMachine.IsProcessing)
             {
-                await Shell.Current.DisplayAlert("Busy", $"{machineDef.Name} is already processing.", "OK");
+                ShowMessage($"{machineDef.Name} is already processing.", true); // Replaced DisplayAlert
                 return;
             }
 
@@ -133,11 +188,10 @@ namespace FarmGame.ViewModels
             if (inputInventory == null || inputInventory.Quantity < machineDef.InputQuantity)
             {
                 string inputProduceName = (await _databaseService.GetItemAsync<ProduceDefinition>(machineDef.InputProduceDefinitionId))?.Name ?? "Unknown";
-                await Shell.Current.DisplayAlert("Not Enough Input", $"You need {machineDef.InputQuantity}x {inputProduceName} to start processing.", "OK");
+                ShowMessage($"You need {machineDef.InputQuantity}x {inputProduceName} to start processing.", true); // Replaced DisplayAlert
                 return;
             }
 
-            // Consume input produce
             inputInventory.Quantity -= machineDef.InputQuantity;
             if (inputInventory.Quantity <= 0)
             {
@@ -148,16 +202,15 @@ namespace FarmGame.ViewModels
                 await _databaseService.SaveItemAsync(inputInventory);
             }
 
-            // Start processing
             playerMachine.IsProcessing = true;
             playerMachine.ProcessStartTime = DateTime.UtcNow;
-            playerMachine.InputProduceInMachineId = machineDef.InputProduceDefinitionId; // Store what's being processed
+            playerMachine.InputProduceInMachineId = machineDef.InputProduceDefinitionId;
             playerMachine.InputQuantityInMachine = machineDef.InputQuantity;
             await _databaseService.SaveItemAsync(playerMachine);
 
-            await UpdateMachineDisplay(displayMachine); // Update UI
-            StartFactoryProcessingTimer(); // Ensure timer is running
-            await Shell.Current.DisplayAlert("Processing Started", $"{machineDef.Name} started processing.", "OK");
+            await UpdateMachineDisplay(displayMachine);
+            StartFactoryProcessingTimer();
+            ShowMessage($"{machineDef.Name} started processing.", false); // Replaced DisplayAlert
         }
 
         private async Task CollectOutput(DisplayMachine displayMachine)
@@ -168,11 +221,12 @@ namespace FarmGame.ViewModels
             if (!playerMachine.IsProcessing || !playerMachine.ProcessStartTime.HasValue ||
                 (DateTime.UtcNow - playerMachine.ProcessStartTime.Value).TotalSeconds < machineDef.ProcessingTimeSeconds)
             {
-                await Shell.Current.DisplayAlert("Not Ready", $"{machineDef.Name} is not finished processing yet.", "OK");
+                ShowMessage($"{machineDef.Name} is not finished processing yet.", true); // Replaced DisplayAlert
                 return;
             }
 
-            // Add output produce to inventory
+            string outputProduceName = (await _databaseService.GetItemAsync<ProduceDefinition>(machineDef.OutputProduceDefinitionId))?.Name ?? "Unknown";
+
             var existingOutputInventory = (await _databaseService.GetItemsAsync<InventoryItem>())
                                           .FirstOrDefault(i => i.ProduceDefinitionId == machineDef.OutputProduceDefinitionId && !i.IsSeed);
 
@@ -191,15 +245,14 @@ namespace FarmGame.ViewModels
                 });
             }
 
-            // Reset machine state
             playerMachine.IsProcessing = false;
             playerMachine.ProcessStartTime = null;
             playerMachine.InputProduceInMachineId = null;
             playerMachine.InputQuantityInMachine = null;
             await _databaseService.SaveItemAsync(playerMachine);
 
-            await UpdateMachineDisplay(displayMachine); // Update UI
-            await Shell.Current.DisplayAlert("Collected", $"Collected {machineDef.OutputQuantity}x {(await _databaseService.GetItemAsync<ProduceDefinition>(machineDef.OutputProduceDefinitionId))?.Name} from {machineDef.Name}.", "OK");
+            await UpdateMachineDisplay(displayMachine);
+            ShowMessage($"Collected {machineDef.OutputQuantity}x {outputProduceName} from {machineDef.Name}.", false); // Replaced DisplayAlert
         }
 
         // --- Factory Processing Timer ---
@@ -208,7 +261,7 @@ namespace FarmGame.ViewModels
             _factoryProcessingTimer?.Stop();
 
             _factoryProcessingTimer = _dispatcher.CreateTimer();
-            _factoryProcessingTimer.Interval = TimeSpan.FromSeconds(1); // Update progress every second
+            _factoryProcessingTimer.Interval = TimeSpan.FromSeconds(1);
             _factoryProcessingTimer.Tick += async (s, e) =>
             {
                 bool anyMachineProcessing = false;
@@ -217,41 +270,22 @@ namespace FarmGame.ViewModels
                     if (displayMachine.PlayerOwnedMachine.IsProcessing)
                     {
                         anyMachineProcessing = true;
-                        await UpdateMachineDisplay(displayMachine); // Update its progress
+                        await UpdateMachineDisplay(displayMachine);
                     }
                 }
                 if (!anyMachineProcessing)
                 {
-                    _factoryProcessingTimer.Stop(); // Stop if no machines are processing
+                    _factoryProcessingTimer.Stop();
                 }
             };
             _factoryProcessingTimer.Start();
         }
 
-        public void OnDisappearing()
+        public override void OnDisappearing() // Override OnDisappearing
         {
+            base.OnDisappearing(); // Call base to stop message timer
             _factoryProcessingTimer?.Stop();
         }
 
-        // INotifyPropertyChanged boilerplate
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        protected bool SetProperty<T>(ref T backingStore, T value,
-            [CallerMemberName] string? propertyName = null,
-            Action? onChanged = null)
-        {
-            if (EqualityComparer<T>.Default.Equals(backingStore, value))
-                return false;
-
-            backingStore = value;
-            onChanged?.Invoke();
-            OnPropertyChanged(propertyName);
-            return true;
-        }
     }
 }

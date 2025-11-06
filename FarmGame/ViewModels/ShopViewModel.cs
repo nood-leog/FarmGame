@@ -4,11 +4,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using Microsoft.Maui.Controls; // Add this for Shell.Current.DisplayAlert
+using Microsoft.Maui.Controls;
 
 namespace FarmGame.ViewModels
 {
-    // Helper classes for displaying shop items with purchase logic (add '?' for nullable events)
+    // Helper classes for displaying shop items with purchase logic (same as before)
     public class ShopSeedDisplayItem : INotifyPropertyChanged
     {
         public SeedDefinition Seed { get; set; }
@@ -21,10 +21,10 @@ namespace FarmGame.ViewModels
 
         public ICommand BuyCommand { get; set; }
 
-        public event PropertyChangedEventHandler? PropertyChanged; // Add '?'
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) => // Add '?'
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "") // Add '?'
+        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "")
         {
             if (EqualityComparer<T>.Default.Equals(backingStore, value)) return false;
             backingStore = value;
@@ -51,10 +51,10 @@ namespace FarmGame.ViewModels
 
         public ICommand BuyCommand { get; set; }
 
-        public event PropertyChangedEventHandler? PropertyChanged; // Add '?'
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) => // Add '?'
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "") // Add '?'
+        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "")
         {
             if (EqualityComparer<T>.Default.Equals(backingStore, value)) return false;
             backingStore = value;
@@ -81,10 +81,10 @@ namespace FarmGame.ViewModels
 
         public ICommand BuyCommand { get; set; }
 
-        public event PropertyChangedEventHandler? PropertyChanged; // Add '?'
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) => // Add '?'
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "") // Add '?'
+        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "")
         {
             if (EqualityComparer<T>.Default.Equals(backingStore, value)) return false;
             backingStore = value;
@@ -93,7 +93,7 @@ namespace FarmGame.ViewModels
         }
     }
 
-    public class ShopViewModel : INotifyPropertyChanged
+    public class ShopViewModel : BaseViewModel // Inherit from BaseViewModel
     {
         private readonly DatabaseService _databaseService;
         private PlayerState _currentPlayerState;
@@ -112,22 +112,19 @@ namespace FarmGame.ViewModels
 
         public ObservableCollection<DisplayInventoryItem> ItemsToSell { get; } = new ObservableCollection<DisplayInventoryItem>();
         public ICommand SellAllProduceCommand { get; }
-        public ICommand SellItemCommand { get; } // Command for individual selling
+        public ICommand SellItemCommand { get; }
 
-        public ShopViewModel(DatabaseService databaseService)
+        public ShopViewModel(DatabaseService databaseService, IDispatcher dispatcher) : base(dispatcher) // Pass dispatcher to base
         {
             _databaseService = databaseService;
             SellAllProduceCommand = new Command(async () => await ExecuteSellAllProduceCommand());
-            SellItemCommand = new Command<DisplayInventoryItem>(async (item) => await SellItem(item)); // Initialize individual sell command
+            SellItemCommand = new Command<DisplayInventoryItem>(async (item) => await SellItem(item));
         }
 
         public async Task LoadShopData()
         {
-            _currentPlayerState = await _databaseService.GetItemAsync<PlayerState>(1);
-            if (_currentPlayerState != null)
-            {
-                PlayerMoney = _currentPlayerState.Money;
-            }
+            _currentPlayerState = await _databaseService.GetItemAsync<PlayerState>(1) ?? new PlayerState();
+            PlayerMoney = _currentPlayerState.Money;
 
             var playerOwnedTools = await _databaseService.GetItemsAsync<PlayerOwnedTool>();
             var playerOwnedMachines = await _databaseService.GetItemsAsync<PlayerOwnedMachine>();
@@ -213,7 +210,7 @@ namespace FarmGame.ViewModels
                 PlayerMoney = _currentPlayerState.Money;
 
                 var existingInventoryItem = (await _databaseService.GetItemsAsync<InventoryItem>())
-                                                .FirstOrDefault(i => i.ProduceDefinitionId == seed.Id && i.IsSeed); // Changed to seed.Id
+                                                .FirstOrDefault(i => i.ProduceDefinitionId == seed.Id && i.IsSeed);
 
                 if (existingInventoryItem != null)
                 {
@@ -224,18 +221,18 @@ namespace FarmGame.ViewModels
                 {
                     await _databaseService.SaveItemAsync(new InventoryItem
                     {
-                        ProduceDefinitionId = seed.Id, // Store SeedDefinition.Id here when IsSeed is true
+                        ProduceDefinitionId = seed.Id,
                         Quantity = 1,
                         IsSeed = true
                     });
                 }
                 UpdateCanAffordStatus();
-                await Shell.Current.DisplayAlert("Purchased", $"You bought 1x {seed.Name}.", "OK"); // Use Shell.Current
+                ShowMessage($"You bought 1x {seed.Name}.", false); // Replaced DisplayAlert
                 await LoadSellableItems();
             }
             else
             {
-                await Shell.Current.DisplayAlert("Cannot Afford", $"You don't have enough money to buy {seed.Name}.", "OK"); // Use Shell.Current
+                ShowMessage($"You don't have enough money to buy {seed.Name}.", true); // Replaced DisplayAlert
             }
         }
 
@@ -246,7 +243,7 @@ namespace FarmGame.ViewModels
                 var playerOwnedTools = await _databaseService.GetItemsAsync<PlayerOwnedTool>();
                 if (playerOwnedTools.Any(pot => pot.ToolDefinitionId == tool.Id))
                 {
-                    await Shell.Current.DisplayAlert("Already Owned", $"You already own the {tool.Name}.", "OK"); // Use Shell.Current
+                    ShowMessage($"You already own the {tool.Name}.", true); // Replaced DisplayAlert
                     return;
                 }
 
@@ -272,11 +269,11 @@ namespace FarmGame.ViewModels
                 var shopToolItem = HoesForSale.FirstOrDefault(t => t.Tool.Id == tool.Id)
                                  ?? WateringCansForSale.FirstOrDefault(t => t.Tool.Id == tool.Id);
                 if (shopToolItem != null) shopToolItem.IsOwned = true;
-                await Shell.Current.DisplayAlert("Purchased", $"You bought the {tool.Name}.", "OK"); // Use Shell.Current
+                ShowMessage($"You bought the {tool.Name}.", false); // Replaced DisplayAlert
             }
             else
             {
-                await Shell.Current.DisplayAlert("Cannot Afford", $"You don't have enough money to buy {tool.Name}.", "OK"); // Use Shell.Current
+                ShowMessage($"You don't have enough money to buy {tool.Name}.", true); // Replaced DisplayAlert
             }
         }
 
@@ -287,7 +284,7 @@ namespace FarmGame.ViewModels
                 var playerOwnedMachines = await _databaseService.GetItemsAsync<PlayerOwnedMachine>();
                 if (playerOwnedMachines.Any(pom => pom.MachineDefinitionId == machine.Id))
                 {
-                    await Shell.Current.DisplayAlert("Already Owned", $"You already own the {machine.Name}.", "OK"); // Use Shell.Current
+                    ShowMessage($"You already own the {machine.Name}.", true); // Replaced DisplayAlert
                     return;
                 }
 
@@ -300,11 +297,11 @@ namespace FarmGame.ViewModels
                 UpdateCanAffordStatus();
                 var shopMachineItem = MachinesForSale.FirstOrDefault(m => m.Machine.Id == machine.Id);
                 if (shopMachineItem != null) shopMachineItem.IsOwned = true;
-                await Shell.Current.DisplayAlert("Purchased", $"You bought the {machine.Name}.", "OK"); // Use Shell.Current
+                ShowMessage($"You bought the {machine.Name}.", false); // Replaced DisplayAlert
             }
             else
             {
-                await Shell.Current.DisplayAlert("Cannot Afford", $"You don't have enough money to buy {machine.Name}.", "OK"); // Use Shell.Current
+                ShowMessage($"You don't have enough money to buy {machine.Name}.", true); // Replaced DisplayAlert
             }
         }
 
@@ -321,7 +318,7 @@ namespace FarmGame.ViewModels
                     ItemsToSell.Add(new DisplayInventoryItem
                     {
                         Id = item.Id,
-                        ProduceDefinitionId = item.ProduceDefinitionId, // Add ProduceDefinitionId here
+                        ProduceDefinitionId = item.ProduceDefinitionId,
                         Name = produceDefinition.Name,
                         Quantity = item.Quantity,
                         IsSeed = item.IsSeed,
@@ -350,7 +347,7 @@ namespace FarmGame.ViewModels
                 {
                     await _databaseService.SaveItemAsync(inventoryItem);
                 }
-                await Shell.Current.DisplayAlert("Sold", $"You sold 1x {itemToSell.Name}.", "OK"); // Use Shell.Current
+                ShowMessage($"You sold 1x {itemToSell.Name}.", false); // Replaced DisplayAlert
                 await LoadSellableItems();
                 UpdateCanAffordStatus();
             }
@@ -360,7 +357,7 @@ namespace FarmGame.ViewModels
         {
             if (!ItemsToSell.Any())
             {
-                await Shell.Current.DisplayAlert("Nothing to Sell", "Your inventory is empty of sellable produce.", "OK");
+                ShowMessage("Your inventory is empty of sellable produce.", true); // Replaced DisplayAlert
                 return;
             }
 
@@ -380,29 +377,14 @@ namespace FarmGame.ViewModels
             await _databaseService.SaveItemAsync(_currentPlayerState);
             PlayerMoney = _currentPlayerState.Money;
 
-            await Shell.Current.DisplayAlert("Sold All", $"You sold all produce for ${totalSoldValue:F2}.", "OK");
+            ShowMessage($"You sold all produce for ${totalSoldValue:F2}.", false); // Replaced DisplayAlert
             await LoadSellableItems();
             UpdateCanAffordStatus();
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged; // Add '?'
-
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) // Add '?'
+        public override void OnDisappearing() // Override OnDisappearing
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        protected bool SetProperty<T>(ref T backingStore, T value,
-            [CallerMemberName] string? propertyName = null, // Add '?'
-            Action? onChanged = null) // Add '?'
-        {
-            if (EqualityComparer<T>.Default.Equals(backingStore, value))
-                return false;
-
-            backingStore = value;
-            onChanged?.Invoke();
-            OnPropertyChanged(propertyName);
-            return true;
+            base.OnDisappearing(); // Call base to stop message timer
         }
     }
 }

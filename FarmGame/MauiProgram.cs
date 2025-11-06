@@ -25,25 +25,38 @@ public static class MauiProgram
         builder.Services.AddSingleton<DatabaseService>();
 
         // Register pages and viewmodels for DI
-        builder.Services.AddTransient<InventoryPage>();
+        builder.Services.AddTransient<InventoryPage>(); // InventoryPage itself
+        builder.Services.AddTransient<InventoryViewModel>(serviceProvider => // Register its ViewModel
+        {
+            var databaseService = serviceProvider.GetRequiredService<DatabaseService>();
+            var dispatcher = Application.Current!.Dispatcher;
+            return new InventoryViewModel(databaseService, dispatcher);
+        });
+
         builder.Services.AddTransient<ShopPage>();
-        builder.Services.AddTransient<ShopViewModel>();
+        builder.Services.AddTransient<ShopViewModel>(serviceProvider =>
+        {
+            var databaseService = serviceProvider.GetRequiredService<DatabaseService>();
+            var dispatcher = Application.Current!.Dispatcher;
+            return new ShopViewModel(databaseService, dispatcher);
+        });
+
         builder.Services.AddTransient<FarmPage>();
         builder.Services.AddTransient<FarmViewModel>(serviceProvider =>
         {
             var databaseService = serviceProvider.GetRequiredService<DatabaseService>();
-            var dispatcher = Application.Current!.Dispatcher; // Use ! for non-null
+            var dispatcher = Application.Current!.Dispatcher;
             return new FarmViewModel(databaseService, dispatcher);
         });
 
-        // Register FactoryPage and FactoryViewModel, passing the dispatcher
-        builder.Services.AddTransient<FactoryPage>();       // Add this line
-        builder.Services.AddTransient<FactoryViewModel>(serviceProvider => // Add this block
+        builder.Services.AddTransient<FactoryPage>();
+        builder.Services.AddTransient<FactoryViewModel>(serviceProvider =>
         {
             var databaseService = serviceProvider.GetRequiredService<DatabaseService>();
-            var dispatcher = Application.Current!.Dispatcher; // Use ! for non-null
+            var dispatcher = Application.Current!.Dispatcher;
             return new FactoryViewModel(databaseService, dispatcher);
         });
+
 
         return builder.Build();
     }

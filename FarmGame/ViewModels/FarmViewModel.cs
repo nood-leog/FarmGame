@@ -4,12 +4,12 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using Microsoft.Maui.Controls; // For Shell.Current.DisplayAlert and IDispatcher
+using Microsoft.Maui.Controls; // For IDispatcher
 using System.Linq; // For LINQ extensions
 
 namespace FarmGame.ViewModels
 {
-    // DisplayPlot remains the same as before
+    // DisplayPlot MUST have its own INotifyPropertyChanged implementation
     public class DisplayPlot : INotifyPropertyChanged
     {
         public Plot Plot { get; set; }
@@ -37,26 +37,36 @@ namespace FarmGame.ViewModels
 
         public ICommand? PlotTappedCommand { get; set; }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string? propertyName = "")
+        // --- INotifyPropertyChanged Implementation for DisplayPlot ---
+        public event PropertyChangedEventHandler? PropertyChanged; // Essential for DisplayPlot
+
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) // Essential for DisplayPlot
         {
-            if (EqualityComparer<T>.Default.Equals(backingStore, value)) return false;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        protected bool SetProperty<T>(ref T backingStore, T value, // Essential for DisplayPlot
+            [CallerMemberName] string? propertyName = null,
+            Action? onChanged = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(backingStore, value))
+                return false;
+
             backingStore = value;
+            onChanged?.Invoke();
             OnPropertyChanged(propertyName);
             return true;
         }
     }
 
-    public class FarmViewModel : INotifyPropertyChanged
+    public class FarmViewModel : BaseViewModel // Inherit from BaseViewModel
     {
         private readonly DatabaseService _databaseService;
-        private readonly IDispatcher _dispatcher;
+        // _dispatcher is now inherited from BaseViewModel
         private PlayerState _currentPlayerState;
         private IDispatcherTimer? _waterRefillTimer;
         private IDispatcherTimer? _cropGrowthTimer;
-        private IDispatcherTimer? _messageTimer; // NEW: Timer for displaying temporary messages
+        // _messageTimer and Message property are now inherited from BaseViewModel
 
         // Player Stats
         private double _playerMoney;
@@ -100,25 +110,16 @@ namespace FarmGame.ViewModels
         // Available Seeds to Plant (from Inventory)
         public ObservableCollection<DisplayInventoryItem> AvailableSeeds { get; } = new ObservableCollection<DisplayInventoryItem>();
 
-        // NEW: Message property for UI feedback
-        private string? _message;
-        public string? Message
-        {
-            get => _message;
-            set => SetProperty(ref _message, value);
-        }
-
-
         // Commands
         public ICommand SelectToolCommand { get; }
         public ICommand SelectSeedToPlantCommand { get; }
         public ICommand ResetInteractionModeCommand { get; }
         public ICommand BuyPlotCommand { get; }
 
-        public FarmViewModel(DatabaseService databaseService, IDispatcher dispatcher)
+        public FarmViewModel(DatabaseService databaseService, IDispatcher dispatcher) : base(dispatcher) // Pass dispatcher to base
         {
             _databaseService = databaseService;
-            _dispatcher = dispatcher;
+            // _dispatcher is now handled by BaseViewModel
 
             SelectToolCommand = new Command<string>(async (toolType) => await ExecuteSelectToolCommand(toolType));
             SelectSeedToPlantCommand = new Command<DisplayInventoryItem>(async (seedItem) => await ExecuteSelectSeedToPlantCommand(seedItem));
@@ -164,22 +165,6 @@ namespace FarmGame.ViewModels
             StartCropGrowthTimer();
         }
 
-        // NEW: Method to display temporary messages
-        private void ShowMessage(string message, bool isError = false)
-        {
-            Message = message;
-            _messageTimer?.Stop();
-            _messageTimer = _dispatcher.CreateTimer();
-            _messageTimer.Interval = TimeSpan.FromSeconds(isError ? 4 : 2); // Longer for errors
-            _messageTimer.Tick += (s, e) =>
-            {
-                Message = null; // Clear message
-                _messageTimer?.Stop();
-            };
-            _messageTimer.Start();
-        }
-
-
         // --- Interaction Mode Management ---
         public FarmInteractionMode CurrentInteractionMode
         {
@@ -191,7 +176,6 @@ namespace FarmGame.ViewModels
                 OnPropertyChanged(nameof(IsPlantingMode));
                 OnPropertyChanged(nameof(IsWateringMode));
                 OnPropertyChanged(nameof(IsHarvestingMode));
-                // Clear selected seed when mode changes (unless it's planting mode)
                 if (value != FarmInteractionMode.Planting)
                 {
                     _selectedSeedToPlant = null;
@@ -208,7 +192,7 @@ namespace FarmGame.ViewModels
         // --- Tool/Seed Selection Commands ---
         private async Task ExecuteSelectToolCommand(string toolType)
         {
-            _selectedSeedToPlant = null; // Always reset selected seed when changing tool mode
+            _selectedSeedToPlant = null;
 
             switch (toolType)
             {
@@ -237,7 +221,7 @@ namespace FarmGame.ViewModels
             {
                 _selectedSeedToPlant = null;
                 CurrentInteractionMode = FarmInteractionMode.None;
-                ShowMessage("You don't have any of those seeds.", true); // Error message
+                ShowMessage("You don't have any of those seeds.", true);
                 return;
             }
 
@@ -265,8 +249,6 @@ namespace FarmGame.ViewModels
                     if (_selectedSeedToPlant != null)
                     {
                         await PlantSeed(displayPlot.Plot, _selectedSeedToPlant);
-                        // No need to reset _selectedSeedToPlant here if we want to allow planting multiple
-                        // plots with the same selected seed until another tool/seed is chosen.
                     }
                     else
                     {
@@ -410,6 +392,7 @@ namespace FarmGame.ViewModels
         private async Task ExecuteBuyPlotCommand()
         {
             double plotCost = 100 + (FarmPlots.Count * 50);
+            // This is still a Shell.Current.DisplayAlert as it's a confirmation, not a simple feedback message.
             bool confirm = await Shell.Current.DisplayAlert("Buy New Plot", $"Do you want to buy a new plot for ${plotCost:F2}?", "Yes", "No");
             if (confirm)
             {
@@ -439,8 +422,6 @@ namespace FarmGame.ViewModels
             }
         }
 
-
-        // UpdatePlotDisplay, Water Refill Timer, Crop Growth Timer, LoadAvailableSeeds, OnDisappearing remain the same
         private async Task UpdatePlotDisplay(DisplayPlot displayPlot)
         {
             var plot = displayPlot.Plot;
@@ -584,31 +565,11 @@ namespace FarmGame.ViewModels
             }
         }
 
-        public void OnDisappearing()
+        public override void OnDisappearing() // Override OnDisappearing
         {
+            base.OnDisappearing(); // Call base to stop message timer
             _waterRefillTimer?.Stop();
             _cropGrowthTimer?.Stop();
-            _messageTimer?.Stop(); // NEW: Stop the message timer too
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        protected bool SetProperty<T>(ref T backingStore, T value,
-            [CallerMemberName] string? propertyName = null,
-            Action? onChanged = null)
-        {
-            if (EqualityComparer<T>.Default.Equals(backingStore, value))
-                return false;
-
-            backingStore = value;
-            onChanged?.Invoke();
-            OnPropertyChanged(propertyName);
-            return true;
         }
     }
 }

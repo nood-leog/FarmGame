@@ -4,130 +4,135 @@
              xmlns:viewmodels="clr-namespace:FarmGame.ViewModels"
              xmlns:models="clr-namespace:FarmGame.Models"
              xmlns:converters="clr-namespace:FarmGame.Converters"
-	x:Class="FarmGame.Views.ShopPage"
-	Title="Shop"
-	x:DataType="viewmodels:ShopViewModel">
-	<ContentPage.Resources>
-		<!-- ADD THIS BLOCK -->
-		<converters:BoolToTextConverter x:Key="BoolToTextConverter" />
-	</ContentPage.Resources>
-	<ScrollView>
-		<VerticalStackLayout Spacing="20" Padding="20">
+             x:Class="FarmGame.Views.ShopPage"
+             Title="Shop"
+             x:DataType="viewmodels:ShopViewModel">
+    <ContentPage.Resources>
+        <converters:BoolToTextConverter x:Key="BoolToTextConverter" />
+    </ContentPage.Resources>
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="20">
 
-			<!-- Player Money Display -->
-			<Border StrokeThickness="1" Stroke="LightGray" Padding="15" BackgroundColor="#E8F5E9"
+            <!-- Player Money Display -->
+            <Border StrokeThickness="1" Stroke="LightGray" Padding="15" BackgroundColor="#E8F5E9"
                     HorizontalOptions="FillAndExpand">
-				<HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
-					<Label Text="Your Money:" FontSize="22" FontAttributes="Bold" TextColor="#388E3C" />
-					<Label Text="{Binding PlayerMoney, StringFormat='${0:F2}'}" FontSize="22" TextColor="#388E3C" />
-				</HorizontalStackLayout>
-			</Border>
+                <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                    <Label Text="Your Money:" FontSize="22" FontAttributes="Bold" TextColor="#388E3C" />
+                    <Label Text="{Binding PlayerMoney, StringFormat='${0:F2}'}" FontSize="22" TextColor="#388E3C" />
+                </HorizontalStackLayout>
+            </Border>
 
-			<!-- Buy Section -->
-			<Label Text="Buy Items" FontSize="28" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#2196F3"/>
+            <!-- Current Message Display -->
+            <Label Text="{Binding Message}"
+                   HorizontalOptions="Center" VerticalOptions="Center"
+                   FontSize="16" FontAttributes="Bold" TextColor="DarkOrange"
+                   Margin="0,-10,0,0" />
 
-			<!-- Seeds For Sale -->
-			<Label Text="Seeds" FontSize="22" FontAttributes="Bold" />
-			<CollectionView ItemsSource="{Binding SeedsForSale}" SelectionMode="None">
-				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="viewmodels:ShopSeedDisplayItem">
-						<Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
-							<Grid ColumnDefinitions="*,Auto,Auto">
-								<Label Grid.Column="0" Text="{Binding Seed.Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
-								<Label Grid.Column="1" Text="{Binding Seed.ShopCost, StringFormat='${0:F2}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
-								<Button Grid.Column="2" Text="Buy" Command="{Binding BuyCommand}" CommandParameter="{Binding Seed}"
+            <!-- Buy Section -->
+            <Label Text="Buy Items" FontSize="28" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#2196F3"/>
+
+            <!-- Seeds For Sale -->
+            <Label Text="Seeds" FontSize="22" FontAttributes="Bold" />
+            <CollectionView ItemsSource="{Binding SeedsForSale}" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:ShopSeedDisplayItem">
+                        <Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <Label Grid.Column="0" Text="{Binding Seed.Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding Seed.ShopCost, StringFormat='${0:F2}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
+                                <Button Grid.Column="2" Text="Buy" Command="{Binding BuyCommand}" CommandParameter="{Binding Seed}"
                                         IsEnabled="{Binding CanAfford}" BackgroundColor="#4CAF50" TextColor="White" />
-							</Grid>
-						</Border>
-					</DataTemplate>
-				</CollectionView.ItemTemplate>
-			</CollectionView>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
-			<!-- Hoes For Sale -->
-			<Label Text="Hoes" FontSize="22" FontAttributes="Bold" Margin="0,15,0,0" />
-			<CollectionView ItemsSource="{Binding HoesForSale}" SelectionMode="None">
-				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="viewmodels:ShopToolDisplayItem">
-						<Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
-							<Grid ColumnDefinitions="*,Auto,Auto,Auto">
-								<Label Grid.Column="0" Text="{Binding Tool.Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
-								<Label Grid.Column="1" Text="{Binding Tool.Range, StringFormat='Range: {0}x{0}'}" FontSize="14" TextColor="Gray" VerticalOptions="Center" Margin="0,0,10,0" />
-								<Label Grid.Column="2" Text="{Binding Tool.ShopCost, StringFormat='${0:F2}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
-								<Button Grid.Column="3" Text="{Binding IsOwned, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Owned,Buy'}"
+            <!-- Hoes For Sale -->
+            <Label Text="Hoes" FontSize="22" FontAttributes="Bold" Margin="0,15,0,0" />
+            <CollectionView ItemsSource="{Binding HoesForSale}" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:ShopToolDisplayItem">
+                        <Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
+                            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                                <Label Grid.Column="0" Text="{Binding Tool.Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding Tool.Range, StringFormat='Range: {0}x{0}'}" FontSize="14" TextColor="Gray" VerticalOptions="Center" Margin="0,0,10,0" />
+                                <Label Grid.Column="2" Text="{Binding Tool.ShopCost, StringFormat='${0:F2}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
+                                <Button Grid.Column="3" Text="{Binding IsOwned, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Owned,Buy'}"
                                         Command="{Binding BuyCommand}" CommandParameter="{Binding Tool}"
                                         IsEnabled="{Binding CanAfford}" BackgroundColor="#4CAF50" TextColor="White" />
-							</Grid>
-						</Border>
-					</DataTemplate>
-				</CollectionView.ItemTemplate>
-			</CollectionView>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
-			<!-- Watering Cans For Sale -->
-			<Label Text="Watering Cans" FontSize="22" FontAttributes="Bold" Margin="0,15,0,0" />
-			<CollectionView ItemsSource="{Binding WateringCansForSale}" SelectionMode="None">
-				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="viewmodels:ShopToolDisplayItem">
-						<Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
-							<Grid ColumnDefinitions="*,Auto,Auto,Auto">
-								<Label Grid.Column="0" Text="{Binding Tool.Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
-								<Label Grid.Column="1" Text="{Binding Tool.Range, StringFormat='Range: {0}x{0}'}" FontSize="14" TextColor="Gray" VerticalOptions="Center" Margin="0,0,10,0" />
-								<Label Grid.Column="2" Text="{Binding Tool.ShopCost, StringFormat='${0:F2}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
-								<Button Grid.Column="3" Text="{Binding IsOwned, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Owned,Buy'}"
+            <!-- Watering Cans For Sale -->
+            <Label Text="Watering Cans" FontSize="22" FontAttributes="Bold" Margin="0,15,0,0" />
+            <CollectionView ItemsSource="{Binding WateringCansForSale}" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:ShopToolDisplayItem">
+                        <Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
+                            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                                <Label Grid.Column="0" Text="{Binding Tool.Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding Tool.Range, StringFormat='Range: {0}x{0}'}" FontSize="14" TextColor="Gray" VerticalOptions="Center" Margin="0,0,10,0" />
+                                <Label Grid.Column="2" Text="{Binding Tool.ShopCost, StringFormat='${0:F2}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
+                                <Button Grid.Column="3" Text="{Binding IsOwned, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Owned,Buy'}"
                                         Command="{Binding BuyCommand}" CommandParameter="{Binding Tool}"
                                         IsEnabled="{Binding CanAfford}" BackgroundColor="#4CAF50" TextColor="White" />
-							</Grid>
-						</Border>
-					</DataTemplate>
-				</CollectionView.ItemTemplate>
-			</CollectionView>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
-			<!-- Machines For Sale -->
-			<Label Text="Factory Machines" FontSize="22" FontAttributes="Bold" Margin="0,15,0,0" />
-			<CollectionView ItemsSource="{Binding MachinesForSale}" SelectionMode="None">
-				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="viewmodels:ShopMachineDisplayItem">
-						<Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
-							<Grid ColumnDefinitions="*,Auto,Auto">
-								<Label Grid.Column="0" Text="{Binding Machine.Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
-								<Label Grid.Column="1" Text="{Binding Machine.ShopCost, StringFormat='${0:F2}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
-								<Button Grid.Column="2" Text="{Binding IsOwned, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Owned,Buy'}"
+            <!-- Machines For Sale -->
+            <Label Text="Factory Machines" FontSize="22" FontAttributes="Bold" Margin="0,15,0,0" />
+            <CollectionView ItemsSource="{Binding MachinesForSale}" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:ShopMachineDisplayItem">
+                        <Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <Label Grid.Column="0" Text="{Binding Machine.Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding Machine.ShopCost, StringFormat='${0:F2}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
+                                <Button Grid.Column="2" Text="{Binding IsOwned, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Owned,Buy'}"
                                         Command="{Binding BuyCommand}" CommandParameter="{Binding Machine}"
                                         IsEnabled="{Binding CanAfford}" BackgroundColor="#4CAF50" TextColor="White" />
-							</Grid>
-						</Border>
-					</DataTemplate>
-				</CollectionView.ItemTemplate>
-			</CollectionView>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
-			<!-- Sell Section -->
-			<Label Text="Sell Items" FontSize="28" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#F44336" Margin="0,30,0,0"/>
+            <!-- Sell Section -->
+            <Label Text="Sell Items" FontSize="28" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#F44336" Margin="0,30,0,0"/>
 
-			<Button Text="Sell All Harvested Produce" Command="{Binding SellAllProduceCommand}"
+            <Button Text="Sell All Harvested Produce" Command="{Binding SellAllProduceCommand}"
                     BackgroundColor="#F44336" TextColor="White" FontSize="18"
                     HorizontalOptions="FillAndExpand" Margin="0,10,0,0"/>
 
-			<CollectionView ItemsSource="{Binding ItemsToSell}" SelectionMode="None">
-				<CollectionView.EmptyView>
-					<Label Text="Nothing to sell yet. Get farming!"
+            <CollectionView ItemsSource="{Binding ItemsToSell}" SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <Label Text="Nothing to sell yet. Get farming!"
                            HorizontalOptions="Center" VerticalOptions="Center" FontSize="16" TextColor="Gray" />
-				</CollectionView.EmptyView>
-				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="models:DisplayInventoryItem">
-						<Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
-							<Grid ColumnDefinitions="*,Auto,Auto">
-								<Label Grid.Column="0" Text="{Binding Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
-								<Label Grid.Column="1" Text="{Binding Quantity, StringFormat='x{0}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
-								<Button Grid.Column="2" Text="{Binding BaseSellPrice, StringFormat='Sell (${0:F2})'}"
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:DisplayInventoryItem">
+                        <Border StrokeThickness="1" Stroke="LightGray" Padding="10" Margin="0,5" BackgroundColor="White">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <Label Grid.Column="0" Text="{Binding Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding Quantity, StringFormat='x{0}'}" FontSize="18" VerticalOptions="Center" Margin="0,0,10,0" />
+                                <Button Grid.Column="2" Text="{Binding BaseSellPrice, StringFormat='Sell (${0:F2})'}"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:ShopViewModel}}, Path=SellItemCommand}"
                                         CommandParameter="{Binding .}"
                                         BackgroundColor="#FF7043" TextColor="White" />
-							</Grid>
-						</Border>
-					</DataTemplate>
-				</CollectionView.ItemTemplate>
-			</CollectionView>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
 
-		</VerticalStackLayout>
-	</ScrollView>
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

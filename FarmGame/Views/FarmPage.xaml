@@ -15,13 +15,12 @@
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="10" Padding="10">
-        <!-- ADDED A ROW FOR THE MESSAGE -->
 
         <!-- Row 0: Player Stats (Money, Water) -->
         <Border Grid.Row="0" StrokeThickness="1" Stroke="LightGray" Padding="10" BackgroundColor="#E8F5E9"
                 HorizontalOptions="FillAndExpand">
             <HorizontalStackLayout Spacing="15" HorizontalOptions="Center">
-                <Label Text="{Binding PlayerMoney, StringFormat='Money: ${0:F2}'}" FontSize="18" FontAttributes="Bold" TextColor="#388E3C" />
+                <Label Text="{Binding PlayerMoney, StringFormat='${0:F2}'}" FontSize="18" FontAttributes="Bold" TextColor="#388E3C" />
                 <Label Text="{Binding WaterCanStatus, StringFormat='Water: {0}'}" FontSize="18" FontAttributes="Bold" TextColor="#2196F3" />
             </HorizontalStackLayout>
         </Border>
