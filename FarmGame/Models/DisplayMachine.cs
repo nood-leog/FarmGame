@@ -1,8 +1,9 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input; // For ICommand
+using System.Collections.Generic; // Added for List<ProduceDefinition>
 
-namespace FarmGame.Models
+namespace FarmGame.Models // <--- Ensure this is correct
 {
     public class DisplayMachine : INotifyPropertyChanged
     {

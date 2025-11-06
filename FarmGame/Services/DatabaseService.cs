@@ -35,8 +35,6 @@ namespace FarmGame.Services
 
         private async Task SeedInitialData()
         {
-            // ... (rest of your SeedInitialData method, no changes needed here as it calls GetItemAsync) ...
-            // Seed Produce Definitions (if not already present)
             if (await _database.Table<ProduceDefinition>().CountAsync() == 0)
             {
                 await _database.InsertAllAsync(new[]
@@ -112,7 +110,7 @@ namespace FarmGame.Services
                 await _database.InsertAsync(new PlayerState
                 {
                     Id = 1,
-                    Money = 100.0,
+                    Money = 1000000.0, //STARTING MONEY
                     CurrentWater = rustyWateringCan?.MaxWaterCapacity ?? 0,
                     MaxWater = rustyWateringCan?.MaxWaterCapacity ?? 0,
                     WaterRefillRate = rustyWateringCan?.WaterRefillRate ?? 0,
@@ -140,7 +138,6 @@ namespace FarmGame.Services
             return _database.Table<T>().ToListAsync();
         }
 
-        // CORRECTED: Use FindAsync for primary key lookups
         public Task<T?> GetItemAsync<T>(int id) where T : class, new()
         {
             return _database.FindAsync<T>(id);
