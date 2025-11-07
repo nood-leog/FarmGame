@@ -16,6 +16,12 @@
     <Color x:Key="DarkPrimary">#301B7A</Color>
     <Color x:Key="DarkSecondary">#FF6699</Color>
 
+    <Color x:Key="DarkBackground">#121212</Color>
+    <Color x:Key="DarkForeground">#E0E0E0</Color>
+    <Color x:Key="DarkInverseForeground">#121212</Color>
+    <Color x:Key="LightInverseForeground">#FFFFFF</Color>
+    
+
     <Color x:Key="White">White</Color>
     <Color x:Key="Black">Black</Color>
     <Color x:Key="Magenta">#D600AA</Color>
